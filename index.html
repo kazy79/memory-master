@@ -498,33 +498,31 @@ function playFail() {
     return new Promise(resolve => {
       const FADE_DUR = 1.2;
       const MAX_VOL  = 0.55;
-      const a = new Audio(diggyFailSrc);
-      a.volume = MAX_VOL;
-      a.play().catch(resolve);
 
-      // currentTime をポーリングしてフェード開始を検知
-      const poll = setInterval(() => {
-        if (!isFinite(a.duration) || a.duration === 0) return;
-        const remaining = a.duration - a.currentTime;
-        if (remaining <= FADE_DUR) {
-          clearInterval(poll);
-          // フェードアウト
-          const steps    = 30;
-          const interval = (FADE_DUR * 1000) / steps;
-          let step = 0;
-          const fadeTimer = setInterval(() => {
-            step++;
-            a.volume = Math.max(0, MAX_VOL * (1 - step / steps));
-            if (step >= steps) {
-              clearInterval(fadeTimer);
-              a.pause();
-              resolve();
-            }
-          }, interval);
-        }
-      }, 100);
+      // ArrayBuffer で取得 → AudioContext でデコード → GainNode でフェード
+      // タイマーに依存しないのでモバイルでも確実
+      fetch(diggyFailSrc)
+        .then(r => r.arrayBuffer())
+        .then(buf => AC.decodeAudioData(buf))
+        .then(decoded => {
+          const src  = AC.createBufferSource();
+          const gain = AC.createGain();
+          src.buffer = decoded;
+          src.connect(gain);
+          gain.connect(AC.destination);
 
-      a.onerror = () => { clearInterval(poll); resolve(); };
+          const dur       = decoded.duration;
+          const fadeStart = AC.currentTime + Math.max(0, dur - FADE_DUR);
+          const fadeEnd   = AC.currentTime + dur;
+
+          gain.gain.setValueAtTime(MAX_VOL, AC.currentTime);
+          gain.gain.setValueAtTime(MAX_VOL, fadeStart);
+          gain.gain.linearRampToValueAtTime(0, fadeEnd);
+
+          src.start();
+          src.onended = resolve;
+        })
+        .catch(resolve);
     });
   }
   [180,140].forEach((hz,i) => {
