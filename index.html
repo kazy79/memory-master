@@ -481,6 +481,7 @@ const diggyFailSrc  = 'audio99_ahahahahahah.mp3.mp3?v=' + _ts;
 function playTone(id, duration = 0.38) {
   if (currentMode && currentMode.audioFiles) {
     const a = new Audio(diggyAudioSrc[id]);
+    a.volume = 0.55;
     a.play().catch(() => {});
     return;
   }
@@ -496,6 +497,7 @@ function playFail() {
   if (currentMode && currentMode.audioFiles) {
     return new Promise(resolve => {
       const a = new Audio(diggyFailSrc);
+      a.volume = 0.55;
       a.onended = resolve;
       a.onerror = resolve;
       a.play().catch(resolve);
