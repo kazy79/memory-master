@@ -583,8 +583,7 @@ function calcSpeed() {
 // ── コンボ検知＆ペカ演出 ─────────────────────────────
 const COMBO_PAIR = [1, 2];
 function isCombo(prev, curr) {
-  return (prev === COMBO_PAIR[0] && curr === COMBO_PAIR[1]) ||
-         (prev === COMBO_PAIR[1] && curr === COMBO_PAIR[0]);
+  return prev === COMBO_PAIR[0] && curr === COMBO_PAIR[1]; // ウェカ→ピポのみ
 }
 function triggerPeka() {
   modeIndEl.classList.remove('peka');
