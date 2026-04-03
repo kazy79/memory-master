@@ -496,29 +496,35 @@ function playTone(id, duration = 0.38) {
 function playFail() {
   if (currentMode && currentMode.audioFiles) {
     return new Promise(resolve => {
+      const FADE_DUR = 1.2;
+      const MAX_VOL  = 0.55;
       const a = new Audio(diggyFailSrc);
-      a.volume = 0.55;
+      a.volume = MAX_VOL;
       a.play().catch(resolve);
 
-      // 再生時間が判明したらフェードアウト開始タイミングを計算
-      const FADE_DUR = 1.2; // 最後1.2秒でフェード
-      a.addEventListener('durationchange', () => {
-        if (!isFinite(a.duration)) return;
-        const fadeStart = Math.max(0, a.duration - FADE_DUR) * 1000;
-        setTimeout(() => {
-          const steps = 30;
+      // currentTime をポーリングしてフェード開始を検知
+      const poll = setInterval(() => {
+        if (!isFinite(a.duration) || a.duration === 0) return;
+        const remaining = a.duration - a.currentTime;
+        if (remaining <= FADE_DUR) {
+          clearInterval(poll);
+          // フェードアウト
+          const steps    = 30;
           const interval = (FADE_DUR * 1000) / steps;
           let step = 0;
-          const timer = setInterval(() => {
+          const fadeTimer = setInterval(() => {
             step++;
-            a.volume = Math.max(0, 0.55 * (1 - step / steps));
-            if (step >= steps) { clearInterval(timer); a.pause(); resolve(); }
+            a.volume = Math.max(0, MAX_VOL * (1 - step / steps));
+            if (step >= steps) {
+              clearInterval(fadeTimer);
+              a.pause();
+              resolve();
+            }
           }, interval);
-        }, fadeStart);
-      }, { once: true });
+        }
+      }, 100);
 
-      a.onended = resolve;
-      a.onerror = resolve;
+      a.onerror = () => { clearInterval(poll); resolve(); };
     });
   }
   [180,140].forEach((hz,i) => {
@@ -732,16 +738,13 @@ async function nextRound() {
 }
 
 async function startGame() {
+  // AudioContext を unlock（無音バッファを再生するだけ）
   if (AC.state === 'suspended') await AC.resume();
-
-  // 全音声をユーザージェスチャー内で unlock（音量0で即停止）
-  if (currentMode && currentMode.audioFiles) {
-    await Promise.all(diggyAudioSrc.map(src => {
-      const a = new Audio(src);
-      a.volume = 0;
-      return a.play().then(() => a.pause()).catch(() => {});
-    }));
-  }
+  const silentBuf = AC.createBuffer(1, 1, AC.sampleRate);
+  const silentSrc = AC.createBufferSource();
+  silentSrc.buffer = silentBuf;
+  silentSrc.connect(AC.destination);
+  silentSrc.start();
 
   sequence = []; playerSeq = []; score = 0;
   scoreEl.textContent = 0;
