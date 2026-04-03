@@ -475,8 +475,7 @@ const LABELS = ['みどり','あか','あお','きいろ','むらさき','オレ
 
 const _ts = Date.now();
 const diggyAudioSrc = MODES.diggy.audioFiles.map(f => f + '?v=' + _ts);
-const diggyFailSrc  = 'audio99_ahahahahahah.mp3.mp3?v=' + _ts;
-let   diggyFailBuffer = null; // 事前デコード済みバッファ
+const diggyFailSrc  = 'audio99_ahahahahahah.mp3.wav?v=' + _ts;
 
 function playTone(id, duration = 0.38) {
   if (currentMode && currentMode.audioFiles) {
@@ -493,37 +492,14 @@ function playTone(id, duration = 0.38) {
   gain.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + duration);
   osc.start(AC.currentTime); osc.stop(AC.currentTime + duration + 0.05);
 }
-function playFailBuffer(resolve) {
-  const FADE_DUR = 1.2;
-  const MAX_VOL  = 0.55;
-  const src  = AC.createBufferSource();
-  const gain = AC.createGain();
-  src.buffer = diggyFailBuffer;
-  src.connect(gain);
-  gain.connect(AC.destination);
-  const dur       = diggyFailBuffer.duration;
-  const fadeStart = AC.currentTime + Math.max(0, dur - FADE_DUR);
-  const fadeEnd   = AC.currentTime + dur;
-  gain.gain.setValueAtTime(MAX_VOL, AC.currentTime);
-  gain.gain.setValueAtTime(MAX_VOL, fadeStart);
-  gain.gain.linearRampToValueAtTime(0, fadeEnd);
-  src.start();
-  src.onended = resolve;
-}
-
 function playFail() {
   if (currentMode && currentMode.audioFiles) {
     return new Promise(resolve => {
-      if (diggyFailBuffer) {
-        playFailBuffer(resolve);
-      } else {
-        // バッファ未キャッシュの場合は fallback
-        const a = new Audio(diggyFailSrc);
-        a.volume = 0.55;
-        a.play().catch(() => {});
-        a.onended = resolve;
-        a.onerror = resolve;
-      }
+      const a = new Audio(diggyFailSrc);
+      a.volume = 0.55;
+      a.onended = resolve;
+      a.onerror = resolve;
+      a.play().catch(resolve);
     });
   }
   [180,140].forEach((hz,i) => {
@@ -745,14 +721,6 @@ async function startGame() {
   silentSrc.connect(AC.destination);
   silentSrc.start();
 
-  // 失敗音をユーザージェスチャー内で事前デコード（モバイル対策）
-  if (!diggyFailBuffer) {
-    try {
-      const res = await fetch(diggyFailSrc);
-      const buf = await res.arrayBuffer();
-      diggyFailBuffer = await AC.decodeAudioData(buf);
-    } catch(e) { /* fallback に任せる */ }
-  }
 
   sequence = []; playerSeq = []; score = 0;
   scoreEl.textContent = 0;
