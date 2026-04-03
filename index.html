@@ -498,9 +498,27 @@ function playFail() {
     return new Promise(resolve => {
       const a = new Audio(diggyFailSrc);
       a.volume = 0.55;
+      a.play().catch(resolve);
+
+      // 再生時間が判明したらフェードアウト開始タイミングを計算
+      const FADE_DUR = 1.2; // 最後1.2秒でフェード
+      a.addEventListener('durationchange', () => {
+        if (!isFinite(a.duration)) return;
+        const fadeStart = Math.max(0, a.duration - FADE_DUR) * 1000;
+        setTimeout(() => {
+          const steps = 30;
+          const interval = (FADE_DUR * 1000) / steps;
+          let step = 0;
+          const timer = setInterval(() => {
+            step++;
+            a.volume = Math.max(0, 0.55 * (1 - step / steps));
+            if (step >= steps) { clearInterval(timer); a.pause(); resolve(); }
+          }, interval);
+        }, fadeStart);
+      }, { once: true });
+
       a.onended = resolve;
       a.onerror = resolve;
-      a.play().catch(resolve);
     });
   }
   [180,140].forEach((hz,i) => {
