@@ -774,9 +774,10 @@ allBtns.forEach(btn => {
         localStorage.setItem('simonBest2', JSON.stringify(best));
         statusEl.textContent = '🏆 New Record!';
         await delay(1200);
+      } else {
+        statusEl.textContent = 'Where is the truth?';
       }
       roundBadge.textContent = '';
-      statusEl.textContent = 'Where is the truth?';
       startBtn.style.visibility = 'visible';
       startBtn.disabled = false;
       requestAnimationFrame(() => { startBtn.style.opacity = '1'; });
