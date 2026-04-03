@@ -481,7 +481,7 @@ const diggyFailSrc  = 'audio99_ahahahahahah.mp3.mp3?v=' + _ts;
 function playTone(id, duration = 0.38) {
   if (currentMode && currentMode.audioFiles) {
     const a = new Audio(diggyAudioSrc[id]);
-    a.volume = 0.55;
+    a.volume = 0.35;
     a.play().catch(() => {});
     return;
   }
